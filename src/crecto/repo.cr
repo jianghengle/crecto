@@ -167,8 +167,7 @@ module Crecto
     # user = Repo.get_by(User, Query.where(name: "fred", age: 21))
     # ```
     def get_by(queryable, query)
-      q = config.adapter.run(config.get_connection, :all, queryable, query.limit(1)).as(DB::ResultSet)
-      results = queryable.from_rs(q)
+      results = all(queryable, query.limit(1))
       results.first if results.any?
     end
 
@@ -709,6 +708,7 @@ module Crecto
 
     private def belongs_to_preload(results, queryable, preload)
       ids = results.map { |r| queryable.foreign_key_value_for_association(preload[:symbol], r) }
+      ids.compact!
       return if ids.empty?
       query = Crecto::Repo::Query.where(id: ids)
       if preload_query = preload[:query]
@@ -721,7 +721,7 @@ module Crecto
 
         results.each do |result|
           fkey = queryable.foreign_key_value_for_association(preload[:symbol], result)
-          if relation_items.has_key?(fkey)
+          if fkey && relation_items.has_key?(fkey)
             items = relation_items[fkey]
             queryable.set_value_for_association(preload[:symbol], result, items.map { |i| i.as(Crecto::Model) })
           end
