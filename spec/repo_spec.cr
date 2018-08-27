@@ -258,6 +258,29 @@ describe Crecto do
           users = Repo.all(User, query)
           users.size.should be > 0
         end
+
+        context "with predecessing where" do
+          it "should return the correct set" do
+            user = User.new
+            user.name = "or_where_user"
+            user.things = 123
+            Repo.insert(user)
+
+            query = Query
+              .where(name: "or_where_user")
+              .or_where(things: 999)
+
+            users = Repo.all(User, query)
+            users.size.should be > 0
+
+            query = Query
+              .where(name: "dlkjf9f9ddf")
+              .or_where(things: 123)
+
+            users = Repo.all(User, query)
+            users.size.should be > 0
+          end
+        end
       end
     end
 
@@ -454,38 +477,79 @@ describe Crecto do
     end
 
     describe "#get_by" do
-      it "should return a row" do
-        user = User.new
-        user.name = "fridge"
-        changeset = Repo.insert(user)
-        id = changeset.instance.id
+      context "with opts" do
+        it "should return a row" do
+          user = User.new
+          user.name = "fridge"
+          changeset = Repo.insert(user)
+          id = changeset.instance.id
 
-        user = Repo.get_by(User, name: "fridge", id: id).as(User)
-        user.id.should eq(id)
-        user.name.should eq("fridge")
+          user = Repo.get_by(User, name: "fridge", id: id).as(User)
+          user.id.should eq(id)
+          user.name.should eq("fridge")
+        end
+
+        it "should not return a row" do
+          user = Repo.get_by(User, id: 99999)
+          user.nil?.should be_true
+        end
       end
 
-      it "should not return a row" do
-        user = Repo.get_by(User, id: 99999)
-        user.nil?.should be_true
+      context "with query" do
+        it "should return a row" do
+          user = User.new
+          user.name = "fridge"
+          changeset = Repo.insert(user)
+          id = changeset.instance.id
+
+          user = Repo.get_by(User, Query.where(name: "fridge", id: id)).as(User)
+          user.id.should eq(id)
+          user.name.should eq("fridge")
+        end
+
+        it "should not return a row" do
+          user = Repo.get_by(User, Query.where(id: 99999))
+          user.nil?.should be_true
+        end
       end
     end
 
     describe "#get_by!" do
-      it "should return a row" do
-        user = User.new
-        user.name = "fridge"
-        changeset = Repo.insert(user)
-        id = changeset.instance.id
+      context "with opts" do
+        it "should return a row" do
+          user = User.new
+          user.name = "fridge"
+          changeset = Repo.insert(user)
+          id = changeset.instance.id
 
-        user = Repo.get_by!(User, name: "fridge", id: id)
-        user.id.should eq(id)
-        user.name.should eq("fridge")
+          user = Repo.get_by!(User, name: "fridge", id: id)
+          user.id.should eq(id)
+          user.name.should eq("fridge")
+        end
+
+        it "should not return a row" do
+          expect_raises(Crecto::NoResults) do
+            user = Repo.get_by!(User, id: 99999)
+          end
+        end
       end
 
-      it "should not return a row" do
-        expect_raises(Crecto::NoResults) do
-          user = Repo.get_by!(User, id: 99999)
+      context "with query" do
+        it "should return a row" do
+          user = User.new
+          user.name = "fridge"
+          changeset = Repo.insert(user)
+          id = changeset.instance.id
+
+          user = Repo.get_by!(User, Query.where(name: "fridge", id: id))
+          user.id.should eq(id)
+          user.name.should eq("fridge")
+        end
+
+        it "should not return a row" do
+          expect_raises(Crecto::NoResults) do
+            user = Repo.get_by!(User, Query.where(id: 99999))
+          end
         end
       end
     end
