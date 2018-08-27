@@ -95,7 +95,7 @@ module Crecto
         q = String.build do |builder|
           builder <<
             "SELECT * FROM " << queryable.table_name <<
-            " WHERE (" << queryable.primary_key_field << "=$1)"  <<
+            " WHERE (" << queryable.primary_key_field << "=$1)" <<
             " LIMIT 1"
         end
 
@@ -117,7 +117,6 @@ module Crecto
           builder.back(2)
           builder << ") RETURNING *"
         end
-
 
         execute(conn, position_args(q), fields_values[:values])
       end
@@ -153,7 +152,6 @@ module Crecto
         builder << " SELECT " << ag << '(' << queryable.table_name << '.' << field << ") FROM " << queryable.table_name
       end
 
-
       private def all(conn, queryable, query)
         params = [] of DbValue | Array(DbValue)
 
@@ -173,7 +171,7 @@ module Crecto
           joins(builder, queryable, query, params)
           wheres(builder, queryable, query, params)
           or_wheres(builder, queryable, query, params)
-          order_bys(builder, query) 
+          order_bys(builder, query)
           limit(builder, query)
           offset(builder, query)
           group_by(builder, query)
@@ -216,7 +214,7 @@ module Crecto
         q = String.build do |builder|
           delete_begin(builder, queryable.table_name)
 
-          wheres(builder, queryable, query, params) 
+          wheres(builder, queryable, query, params)
           or_wheres(builder, queryable, query, params)
         end
 
@@ -297,7 +295,7 @@ module Crecto
 
         query.joins.each do |join|
           if join.is_a? Symbol
-            if queryable.through_key_for_association(join)
+            if Crecto::Associations.through_key_for_association(queryable, join)
               join_through(builder, queryable, join)
             else
               join_single(builder, queryable, join)
@@ -309,37 +307,37 @@ module Crecto
       end
 
       private def join_single(builder, queryable, join)
-        association_klass = queryable.klass_for_association(join)
+        association_klass = Crecto::Associations.klass_for_association(queryable, join)
 
         builder << " INNER JOIN " << association_klass.table_name << " ON "
 
-        if queryable.association_type_for_association(join) == :belongs_to
+        if Crecto::Associations.association_type_for_association(queryable, join) == :belongs_to
           builder << association_klass.table_name << '.' << association_klass.primary_key_field
         else
-          builder << association_klass.table_name << '.' << queryable.foreign_key_for_association(join).to_s
+          builder << association_klass.table_name << '.' << Crecto::Associations.foreign_key_for_association(queryable, join).to_s
         end
 
         builder << " = "
 
-        if queryable.association_type_for_association(join) == :belongs_to
-          builder << queryable.table_name << '.' << association_klass.foreign_key_for_association(queryable).to_s
+        if Crecto::Associations.association_type_for_association(queryable, join) == :belongs_to
+          builder << queryable.table_name << '.' << Crecto::Associations.foreign_key_for_association(association_klass, queryable).to_s
         else
           builder << queryable.table_name << '.' << queryable.primary_key_field
         end
       end
 
       private def join_through(builder, queryable, join)
-        association_klass = queryable.klass_for_association(join)
-        join_klass = queryable.klass_for_association(queryable.through_key_for_association(join).as(Symbol))
+        association_klass = Crecto::Associations.klass_for_association(queryable, join)
+        join_klass = Crecto::Associations.klass_for_association(queryable, Crecto::Associations.through_key_for_association(queryable, join).as(Symbol))
 
         builder << " INNER JOIN " << join_klass.table_name << " ON "
-        builder << join_klass.table_name << '.' << queryable.foreign_key_for_association(join).to_s
+        builder << join_klass.table_name << '.' << Crecto::Associations.foreign_key_for_association(queryable, join).to_s
         builder << " = "
         builder << queryable.table_name << '.' << queryable.primary_key_field
         builder << " INNER JOIN " << association_klass.table_name << " ON "
         builder << association_klass.table_name << '.' << association_klass.primary_key_field
         builder << " = "
-        builder << join_klass.table_name << '.' << join_klass.foreign_key_for_association(association_klass).to_s
+        builder << join_klass.table_name << '.' << Crecto::Associations.foreign_key_for_association(join_klass, association_klass).to_s
       end
 
       private def order_bys(builder, query)

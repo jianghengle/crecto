@@ -31,7 +31,7 @@ module Crecto
           @{{foreign_key.id}} = val.pkey_value.as(PkeyValue)
         end
 
-        CRECTO_ASSOCIATIONS.push({
+        Crecto::Associations.crecto_associations.push({
           association_type: :belongs_to,
           key: {{association_name}},
           this_klass: {{@type}},

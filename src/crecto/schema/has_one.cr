@@ -39,7 +39,7 @@ module Crecto
         end
 
 
-        CRECTO_ASSOCIATIONS.push({
+        Crecto::Associations.crecto_associations.push({
           association_type: :has_one,
           key: {{association_name}},
           this_klass: {{@type}},
