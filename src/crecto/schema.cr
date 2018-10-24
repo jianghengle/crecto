@@ -42,15 +42,6 @@ module Crecto
     CRECTO_PRIMARY_KEY_FIELD_SYMBOL = :id
     # :nodoc:
     CRECTO_PRIMARY_KEY_FIELD_TYPE = "PkeyValue"
-    # :nodoc:
-    CRECTO_ASSOCIATIONS = Array(NamedTuple(association_type: Symbol,
-      key: Symbol,
-      this_klass: Model.class,
-      klass: Model.class,
-      foreign_key: Symbol,
-      foreign_key_value: Proc(Model, PkeyValue),
-      set_association: Proc(Model, (Array(Crecto::Model) | Model), Nil),
-      through: Symbol?)).new
 
     # schema block macro
     macro schema(table_name, **opts, &block)
@@ -280,7 +271,7 @@ module Crecto
                   @{{field[:name].id}} = JSON.parse(value)
                 {% elsif field[:type].id.stringify == "Time" %}
                   begin
-                    @{{field[:name].id}} = Time.parse(value, "%F %T %z")
+                    @{{field[:name].id}} = Time.parse!(value, "%F %T %z")
                   end
                 {% end %}
               end
@@ -321,6 +312,49 @@ module Crecto
         {% end %}
       end
 
+      def cast(**attributes : **T) forall T
+        \{% for field in CRECTO_FIELDS.select { |field| T.keys.includes?(field[:name].id) } %}
+           if attributes.has_key?(\{{ field[:name] }})
+             self.\{{ field[:name].id }} = attributes[\{{ field[:name] }}]
+           end
+        \{% end %}
+      end
+
+      def cast(attributes : NamedTuple, whitelist : Tuple = attributes.keys)
+        cast(attributes.to_h, whitelist.to_a)
+      end
+
+      def cast(attributes : Hash(Symbol, T), whitelist : Array(Symbol) = attributes.keys) forall T
+        {% if CRECTO_FIELDS.size > 0 %}
+          cast_attributes = {} of Symbol => Union({{ CRECTO_FIELDS.map { |field| field[:type].id }.splat }})
+
+          attributes.each do |key, value|
+            cast_attributes[key] = value
+          end
+
+          {% for field in CRECTO_FIELDS %}
+             if whitelist.includes?({{ field[:name] }}) && attributes.has_key?({{ field[:name] }})
+               self.{{ field[:name].id }} = cast_attributes[{{ field[:name] }}].as({{ field[:type].id }})
+             end
+          {% end %}
+        {% end %}
+      end
+
+      def cast(attributes : Hash(String, T), whitelist : Array(String) = attributes.keys) forall T
+        {% if CRECTO_FIELDS.size > 0 %}
+          cast_attributes = {} of String => Union({{ CRECTO_FIELDS.map { |field| field[:type].id }.splat }})
+
+          attributes.each do |key, value|
+            cast_attributes[key] = value
+          end
+
+          {% for field in CRECTO_FIELDS %}
+            if whitelist.includes?({{ field[:name].id.stringify }}) && attributes.has_key?({{ field[:name].id.stringify }})
+              self.{{ field[:name].id }} = cast_attributes[{{ field[:name].id.stringify }}].as({{ field[:type].id }})
+            end
+          {% end %}
+        {% end %}
+      end
     end
   end
 end

@@ -108,7 +108,7 @@ module Crecto
         q = String.build do |builder|
           builder <<
             "INSERT INTO " << changeset.instance.class.table_name <<
-            " (" << fields_values[:fields] << ')' <<
+            " (" << fields_values[:fields].join(", ") << ')' <<
             " VALUES" <<
             " ("
           fields_values[:values].size.times do
@@ -173,7 +173,7 @@ module Crecto
           joins(builder, queryable, query, params)
           wheres(builder, queryable, query, params)
           or_wheres(builder, queryable, query, params)
-          order_bys(builder, query) 
+          order_bys(builder, query)
           limit(builder, query)
           offset(builder, query)
           group_by(builder, query)
@@ -216,7 +216,7 @@ module Crecto
         q = String.build do |builder|
           delete_begin(builder, queryable.table_name)
 
-          wheres(builder, queryable, query, params) 
+          wheres(builder, queryable, query, params)
           or_wheres(builder, queryable, query, params)
         end
 
@@ -310,6 +310,7 @@ module Crecto
 
       private def join_single(builder, queryable, join)
         association_klass = queryable.klass_for_association(join)
+        return "" if association_klass.nil?
 
         builder << " INNER JOIN " << association_klass.table_name << " ON "
 
@@ -331,6 +332,7 @@ module Crecto
       private def join_through(builder, queryable, join)
         association_klass = queryable.klass_for_association(join)
         join_klass = queryable.klass_for_association(queryable.through_key_for_association(join).as(Symbol))
+        return "" if join_klass.nil? || association_klass.nil?
 
         builder << " INNER JOIN " << join_klass.table_name << " ON "
         builder << join_klass.table_name << '.' << queryable.foreign_key_for_association(join).to_s

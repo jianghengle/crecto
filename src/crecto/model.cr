@@ -89,44 +89,78 @@ module Crecto
         self.class.changeset(self)
       end
 
-      # Get the Class for the assocation name
-      # i.e. :posts => Post
+      # Empty association methods
+      # Implementations are in the setup_association macro
       def self.klass_for_association(association : Symbol)
-        CRECTO_ASSOCIATIONS.select{|a| a[:key] == association && a[:this_klass] == self}.first[:klass]
       end
 
-      # Get the foreign key for the association
-      # i.e. :posts => :user_id
-      def self.foreign_key_for_association(association : Symbol) : Symbol
-        CRECTO_ASSOCIATIONS.select{|a| a[:key] == association && a[:this_klass] == self}.first[:foreign_key]
+      def self.foreign_key_for_association(association : Symbol) : Symbol?
       end
 
       def self.foreign_key_for_association(klass : Crecto::Model.class)
-        CRECTO_ASSOCIATIONS.select{|a| a[:klass] == klass && a[:this_klass] == self}.first[:foreign_key]
       end
 
-      # Get the foreign key value from the relation object
-      # i.e. :posts, post => post.user_id
       def self.foreign_key_value_for_association(association : Symbol, item)
-        CRECTO_ASSOCIATIONS.select{|a| a[:key] == association && a[:this_klass] == self}.first[:foreign_key_value].call(item).as(PkeyValue)
       end
 
-      # Set the value for the association
-      # i.e. :posts, user, [posts] => user.posts = [posts]
       def self.set_value_for_association(association : Symbol, item, items)
-        CRECTO_ASSOCIATIONS.select{|a| a[:key] == association && a[:this_klass] == self}.first[:set_association].call(item, items)
       end
 
-      # Get the association type for the association
-      # i.e. :posts => :has_many
       def self.association_type_for_association(association : Symbol)
-        CRECTO_ASSOCIATIONS.select{|a| a[:key] == association && a[:this_klass] == self}.first[:association_type]
       end
 
-      # Get the through association symbol
-      # i.e. :posts => :user_posts (if has_many through)
       def self.through_key_for_association(association : Symbol) : Symbol?
-        CRECTO_ASSOCIATIONS.select{|a| a[:key] == association && a[:this_klass] == self}.first[:through]
+      end
+
+      # Class methods for mass assignment
+      def self.cast(**attributes)
+        new.tap { |m| m.cast(**attributes) }
+      end
+
+      def self.cast(attributes : NamedTuple, whitelist : Tuple = attributes.keys)
+        new.tap { |m| m.cast(attributes, whitelist) }
+      end
+
+      def self.cast(attributes : Hash(Symbol, T), whitelist : Array(Symbol) = attributes.keys) forall T
+        new.tap { |m| m.cast(attributes, whitelist) }
+      end
+
+      def self.cast(attributes : Hash(String, T), whitelist : Array(String) = attributes.keys) forall T
+        new.tap { |m| m.cast(attributes, whitelist) }
+      end
+
+      # Class methods for compile-time type safe mass assignment
+      def self.cast!(**attributes : **T) forall T
+        new.tap { |m| m.cast!(**attributes) }
+      end
+
+      def self.cast!(attributes : NamedTuple)
+        cast!(**attributes)
+      end
+
+      # Empty instance methods for mass assignment
+      # Implementations are in the Schema.setup macro
+      def cast(**attributes : **T) forall T
+      end
+
+      def cast(attributes : NamedTuple, whitelist : Tuple = attributes.keys)
+      end
+
+      def cast(attributes : Hash(Symbol, T), whitelist : Array(Symbol) = attributes.keys) forall T
+      end
+
+      def cast(attributes : Hash(String, T), whitelist : Array(String) = attributes.keys) forall T
+      end
+
+      # Instance method for compile-time type safe mass assignment
+      def cast!(**attributes : **T) forall T
+        \{% for key in T.keys %}
+           self.\{{ key }} = attributes[\{{ key.symbolize }}]
+        \{% end %}
+      end
+
+      def cast!(attributes : NamedTuple)
+        cast!(**attributes)
       end
     end
   end
